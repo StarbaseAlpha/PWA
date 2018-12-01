@@ -1,0 +1,26 @@
+{
+  "name": "@starbase/pwa",
+  "version": "0.0.1",
+  "description": "Starbase Progressive Web App",
+  "main": "pwa.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starbasealpha/pwa.git"
+  },
+  "keywords": [
+    "PWA",
+    "Progressive",
+    "Web",
+    "App",
+    "Starbase"
+  ],
+  "author": "Mike Fuller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/starbasealpha/pwa/issues"
+  },
+  "homepage": "https://github.com/starbasealpha/pwa#readme"
+}
