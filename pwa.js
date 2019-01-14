@@ -78,7 +78,7 @@ function PWA() {
       if (event.request.method === 'GET') {
         event.respondWith(
           caches.match(event.request).then(function(response) {
-            return response || fetch(event.request).then(response=>{
+            return response || fetch(event.request, {"redirect":"follow"}).then(response=>{
               return response;
             })
           })
