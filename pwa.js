@@ -2,91 +2,100 @@
 
 function PWA() {
 
-  const init = (swPath) => {
+  const app = (swURL, onInstallReady) => {
 
-    let installer;
-    let onInstallReady;
-    let onUpdateReady;
-    let installButton;
-    let updateButton;
+    navigator.serviceWorker.register(swURL);
 
-    let pwa = {};
-    pwa.sw;
+    const getServiceWorker = async () => {
+      return await navigator.serviceWorker.getRegistration();
+    };
 
-    installButton = document.createElement('button');
-    installButton.innerHTML = "Install App";
-
-    updateButton = document.createElement('button');
-    updateButton.innerHTML = "Update App";
-
-    if('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(swPath).then(reg=>{
-        pwa.sw = reg;
-        let update = () => {
-          return pwa.sw.update();
-        };
-        pwa.sw.onupdatefound = (e) => {
-          if (onUpdateReady && typeof onUpdateReady === 'function') {
-            onUpdateReady(updateButton,e);
-          }
-        };
-        updateButton.onclick = () => {
-          updateButton.innerHTML = "Updating...";
-          pwa.sw.update().then(()=> {
-            location.reload();
-          });
-        };
+    const RESET = async () => {
+      (await getServiceWorker()).unregister().then(()=>{
+        location.reload();
       });
     };
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      installer = e;
-      installButton.onclick = (e) => {
-        installer.prompt();
+    window.addEventListener('beforeinstallprompt', function (e) {
+      let install = async (cb) => {
+        e.prompt();
+        e.userChoice.then(result => {
+        if (cb && typeof cb === 'function') {
+          cb(result);
+        }
+        });
       };
       if (onInstallReady && typeof onInstallReady === 'function') {
-        onInstallReady(installButton,installer);
+        onInstallReady(install);
       }
     });
 
-    pwa.onInstallReady = (cb) => {
-      onInstallReady = cb;
-    };
-
-    pwa.onUpdateReady = (cb) => {
-      onUpdateReady = cb;
-    };
-
-    pwa.update = () => {
-      return pwa.sw.update();
-    };
-
-    return pwa;
+    return {getServiceWorker, RESET};
 
   };
 
-  const SWCache = (resources) => {
-    self.addEventListener('install', function(event) {
-      event.waitUntil(
-        caches.open('sw-cache').then(cache=> {
-          return cache.addAll(resources);
+  const sw = (resources=[], offlineURL=null) => {
+
+    if (offlineURL && !resources.includes(offlineURL)) {
+      resources.push(offlineURL);
+    }
+
+    self.addEventListener('install', async (e) => {
+      console.log("Installing Service Worker...");
+      await caches.delete('resources');
+      let cache = await caches.open('resources');
+      await cache.addAll(resources);
+      return self.skipWaiting();
+    });
+
+    self.addEventListener('activate', async (e) => {
+      console.log('Service Worker Activated!');
+    });
+
+    self.addEventListener('fetch', e => {
+      if (e.request.method !== 'GET') {
+        return null;
+      }
+      e.respondWith(
+        fetch(e.request).then(async response => {
+          if (!response) {
+            if (offlineURL) {
+              return caches.match(offlineURL);
+            } else {
+              return null;
+            }
+          }
+          if (response.status > 499) {
+            let cached = await caches.match(e.request);
+            if (cached) {
+              return cached;
+            } else {
+              if (offlineURL) {
+                return caches.match(offlineURL);
+              }
+            }
+          }
+          let cache = await caches.open('resources');
+          cache.put(e.request, response.clone());
+          return response;
+        }).catch(async (err) => {
+          let cached = await caches.match(e.request);
+          if (cached) {
+            return cached;
+          } else {
+            if (offlineURL) {
+              return caches.match(offlineURL);
+            }
+          }
         })
       );
     });
-    self.addEventListener('fetch', function(event) {
-      if (event.request.method === 'GET') {
-        event.respondWith(
-          caches.match(event.request).then(function(response) {
-            return response || fetch(event.request).then(response=>{
-              return response;
-            })
-          })
-        );
-      }
-    });
+
+    let SW = {};
+    return SW;
+
   };
 
-  return {"init":init, "SWCache":SWCache}
+  return {app, sw};
 
 }
