@@ -2,7 +2,7 @@
 
 function PWA() {
 
-  const app = (swURL, onInstallReady) => {
+  const app = (swURL, onInstallReady=null, onUpdateReady=null) => {
 
     navigator.serviceWorker.register(swURL);
 
@@ -11,7 +11,8 @@ function PWA() {
     };
 
     const RESET = async () => {
-      (await getServiceWorker()).unregister().then(()=>{
+      caches.delete('resources');
+      await getServiceWorker().unregister().then(()=>{
         location.reload();
       });
     };
@@ -27,6 +28,16 @@ function PWA() {
       };
       if (onInstallReady && typeof onInstallReady === 'function') {
         onInstallReady(install);
+      }
+    });
+
+    navigator.serviceWorker.getRegistration().then(reg=>{
+      if (reg) {
+        reg.addEventListener('updatefound', ()=>{
+          if (onUpdateReady && typeof onUpdateReady === 'function') {
+            onUpdateReady(true);
+          }
+        });
       }
     });
 
