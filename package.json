@@ -1,6 +1,6 @@
 {
   "name": "@starbase/pwa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Starbase Progressive Web App",
   "main": "pwa.js",
   "scripts": {
