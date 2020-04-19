@@ -2,7 +2,7 @@
 
 function PWA() {
 
-  const app = (swURL, onInstallReady=null, onUpdateReady=null) => {
+  const app = (swURL, onInstallReady=null, onUpdateReady=null, cacheName="resources") => {
 
     navigator.serviceWorker.register(swURL);
 
@@ -11,9 +11,13 @@ function PWA() {
     };
 
     const RESET = async () => {
-      caches.delete('resources');
-      await getServiceWorker().unregister().then(()=>{
-        location.reload();
+      caches.delete(cacheName);
+      await getServiceWorker().then(reg=>{
+        reg.unregister().then(()=>{
+          location.reload();
+        }).catch(err=>{
+          location.reload();
+        });
       });
     };
 
@@ -45,17 +49,17 @@ function PWA() {
 
   };
 
-  const sw = (resources=[], offlineURL=null) => {
+  const sw = (cacheName=[], offlineURL=null) => {
 
-    if (offlineURL && !resources.includes(offlineURL)) {
-      resources.push(offlineURL);
+    if (offlineURL && !cacheName.includes(offlineURL)) {
+      cacheName.push(offlineURL);
     }
 
     self.addEventListener('install', async (e) => {
       console.log("Installing Service Worker...");
-      await caches.delete('resources');
-      let cache = await caches.open('resources');
-      await cache.addAll(resources);
+      await caches.delete(cacheName);
+      let cache = await caches.open(cacheName);
+      await cache.addAll(cacheName);
       return self.skipWaiting();
     });
 
@@ -86,7 +90,7 @@ function PWA() {
               }
             }
           }
-          let cache = await caches.open('resources');
+          let cache = await caches.open(cacheName);
           cache.put(e.request, response.clone());
           return response;
         }).catch(async (err) => {
