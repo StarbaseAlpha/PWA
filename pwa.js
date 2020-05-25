@@ -62,7 +62,7 @@ function PWA() {
   const sw = (resources, offlineURL=null, cacheName="resources") => {
 
     if (offlineURL && !cacheName.includes(offlineURL)) {
-      cacheName.push(offlineURL);
+      resources.push(offlineURL);
     }
 
     self.addEventListener('install', async (e) => {
