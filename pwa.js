@@ -61,7 +61,7 @@ function PWA() {
 
   const sw = (resources, offlineURL=null, cacheName="resources") => {
 
-    if (offlineURL && !cacheName.includes(offlineURL)) {
+    if (offlineURL && !resources.includes(offlineURL)) {
       resources.push(offlineURL);
     }
 
