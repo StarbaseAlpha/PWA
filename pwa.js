@@ -2,7 +2,7 @@
 
 function PWA() {
 
-  const app = (swURL, onInstallReady=null, onUpdateReady=null, cacheName="resources") => {
+  const app = (swURL, onInstallReady=null, onUpdateReady=null, onRefreshReady=null, cacheName="resources") => {
 
     navigator.serviceWorker.register(swURL);
 
@@ -21,7 +21,7 @@ function PWA() {
       });
     };
 
-    window.addEventListener('beforeinstallprompt', function (e) {
+    window.addEventListener('beforeinstallprompt', (e) => {
       let install = async (cb) => {
         e.prompt();
         e.userChoice.then(result => {
@@ -32,6 +32,16 @@ function PWA() {
       };
       if (onInstallReady && typeof onInstallReady === 'function') {
         onInstallReady(install);
+      }
+    });
+
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data.msg && e.data.msg === 'refresh') {
+        if (e.data && e.data.url && location.href === e.data.url) {
+          if (onRefreshReady && typeof onRefreshReady === 'function') {
+            onRefreshReady(true);
+          }
+        }
       }
     });
 
@@ -67,43 +77,46 @@ function PWA() {
       console.log('Service Worker Activated!');
     });
 
-    self.addEventListener('fetch', e => {
-      if (e.request.method !== 'GET') {
-        return null;
-      }
-      e.respondWith(
-        fetch(e.request).then(async response => {
-          if (!response) {
-            if (offlineURL) {
-              return caches.match(offlineURL);
-            } else {
-              return null;
-            }
-          }
-          if (response.status > 499) {
-            let cached = await caches.match(e.request);
-            if (cached) {
-              return cached;
-            } else {
-              if (offlineURL) {
-                return caches.match(offlineURL);
+    const fetchNew = async (request) => {
+        return fetch(request).then(async response=>{
+          if (response.status === 200) {
+            let cache = await caches.open(cacheName);
+            let cached = await cache.match(request);
+            if (cached && response.headers.get('eTag') !== cached.headers.get('eTag')) {
+              await cache.put(request, response.clone());
+              let allClients = await clients.matchAll();
+              for(let client of allClients) {
+                client.postMessage({"msg":"refresh", "url":request.url});
               }
+              return;
             }
           }
-          let cache = await caches.open(cacheName);
-          cache.put(e.request, response.clone());
-          return response;
-        }).catch(async (err) => {
-          let cached = await caches.match(e.request);
-          if (cached) {
-            return cached;
-          } else {
-            if (offlineURL) {
-              return caches.match(offlineURL);
+        }).catch(err=>{
+          return;
+        });
+    };
+
+    self.addEventListener('fetch', async (e) => {
+      if (e.request.method !== 'GET') {
+        return;
+      }
+      e.respondWith((async ()=> {
+        let cache = await caches.open(cacheName);
+        let cached = await cache.match(e.request, {"ignoreSearch":true});
+        if (cached) {
+          e.waitUntil(fetchNew(e.request));
+          return cached;
+        } else {
+          return fetch(e.request).then(async response=>{
+            if (response.status === 200) {
+              await cache.put(e.request, response.clone());
             }
-          }
-        })
-      );
+            return response;
+          }).catch(err=>{
+            return cache.match('/offline');
+          });
+        }
+      })());
     });
 
     let SW = {};
