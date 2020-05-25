@@ -59,7 +59,7 @@ function PWA() {
 
   };
 
-  const sw = (cacheName=[], offlineURL=null) => {
+  const sw = (resources, offlineURL=null, cacheName="resources") => {
 
     if (offlineURL && !cacheName.includes(offlineURL)) {
       cacheName.push(offlineURL);
@@ -69,7 +69,7 @@ function PWA() {
       console.log("Installing Service Worker...");
       await caches.delete(cacheName);
       let cache = await caches.open(cacheName);
-      await cache.addAll(cacheName);
+      await cache.addAll(resources);
       return self.skipWaiting();
     });
 
